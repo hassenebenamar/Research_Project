@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "SimulationMode.generated.h"
 
+class AAgent;
+class AAgentSpawner;
 /**
  * 
  */
@@ -13,5 +15,8 @@ UCLASS()
 class RESEARCH_PROJECT_API ASimulationMode : public AGameModeBase
 {
 	GENERATED_BODY()
+
+public:
+	ASimulationMode();
 	
 };

@@ -29,7 +29,12 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UWorld* World;
+	//atributes
+	UPROPERTY(VisibleAnywhere)
+	UAgentAttribute* Attributes;
 
+	UPROPERTY(EditAnywhere, category = "Agent Mesh")
+	USkeletalMesh* AgentMesh;
 protected:
 	virtual void BeginPlay() override;
 
@@ -40,10 +45,6 @@ protected:
 	bool IsAttacking();
 	bool IsActive();
 	bool IsSleeping();
-
-	//atributes
-	UPROPERTY(VisibleAnywhere)
-	UAgentAttribute* Attributes;
 
 	UPROPERTY(EditAnywhere)
 	float CombatRadius;

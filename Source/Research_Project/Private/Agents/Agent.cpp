@@ -21,6 +21,16 @@ AAgent::AAgent() {
 	PrimaryActorTick.bCanEverTick = true;
 
 	Attributes = CreateDefaultSubobject<UAgentAttribute>(TEXT("Attributes"));
+	if (Attributes->DNA.Num() == 0 && Attributes->SurvivabilityScore == 0.f) {
+		Attributes->SurvivabilityScore = FMath::FRandRange(0.f, 1.f);
+		for (uint8 i = 0; i < 4; i++) {
+			uint8 ChromosomeToAdd = UKismetMathLibrary::RandomInteger(2);
+			Attributes->DNA.Add(ChromosomeToAdd);
+		}
+	}
+	if (AgentMesh) {
+		GetMesh()->SetSkeletalMesh(AgentMesh);
+	}
 }
 
 void AAgent::BeginPlay()
@@ -30,6 +40,7 @@ void AAgent::BeginPlay()
 	UCapsuleComponent* Capsule = ACharacter::GetCapsuleComponent();
 	if (Attributes && Capsule) {
 		float AgentSize = Attributes->CalculateSize(Capsule->GetScaledCapsuleRadius());
+		
 	}
 	AgentController = Cast<AAIController>(GetController());
 	OnActorBeginOverlap.AddDynamic(this, &AAgent::OnActorOverlap);

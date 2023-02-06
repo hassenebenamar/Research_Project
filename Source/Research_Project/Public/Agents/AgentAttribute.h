@@ -23,6 +23,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	EAgentSpecie AgentSpecie;
+
+	//research variables
+
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
+		float SurvivabilityScore;
+
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
+		bool bWasChosen;
 protected:
 	virtual void BeginPlay() override;
 
@@ -48,14 +56,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
 	EEnvType EnvironmentType;
-
-	//research variables
-
-	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
-		float SurvivabilityScore;
-
-	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
-		bool bWasChosen;
 
 
 public:

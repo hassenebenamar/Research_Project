@@ -26,8 +26,9 @@ protected:
 	virtual void BeginPlay() override;
 
 	//research functions
-	void SpawnActors();
+	void SpawnActorsStart();
 	void SpawnActorAtLocation(FVector Location);
+	void SpawnActorGenerated(AAgent* ActorToSpawn, FVector Location);
 
 private:
 
@@ -58,4 +59,46 @@ private:
 	float CalculatePerlinX();
 	float CalculatePerlinY();
 
+	//genetic algorithm
+
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+	float CrossoverChance;
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+	float MutationChance;
+
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+	AAgent* FirstCandidate;
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+	AAgent* SecondCandidate;
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+		AAgent* ChildOne;
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+		AAgent* ChildTwo;
+	UPROPERTY(VisibleAnywhere, Category = "Genetic Algorithm")
+	TArray<AAgent*> Population;
+	UPROPERTY(VisibleAnywhere, Category = "Genetic Algorithm")
+	TArray<AAgent*> NewPopulation;
+
+	TArray<AActor*> ActorsToIgnore;
+	TArray<AActor*> OutActors;
+
+	void Selection();
+	void Crossover();
+	bool CheckPopulation();
+	bool CheckNewPopulation();
+	void MutateChildren();
+	void DestroyParents(AAgent*& FirstParent, AAgent*& SecondParent);
+	void RemoveParentsFromPopulation(AAgent*& FirstParent, AAgent*& SecondParent);
+	void SpawnChildren();
+	void Mutation(AAgent* AgentToMutate);
+	TArray<AAgent*> GetAllAgents();
+
+	//timer related functions
+
+	FTimerHandle GenerationTimer;
+	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
+	float GenerationTime;
+
+	void StartGenerationTimer();
+	void ClearGenerationTimer();
 };
