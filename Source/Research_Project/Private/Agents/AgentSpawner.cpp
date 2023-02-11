@@ -2,8 +2,7 @@
 
 
 #include "Agents/AgentSpawner.h"
-#include "Agents/Agent.h"
-#include "Agents/AgentAttribute.h"
+#include "Agents/AgentsHeader.h"
 #include "Research_Project/DebugMacros.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
@@ -30,30 +29,27 @@ void AAgentSpawner::BeginPlay()
 
 void AAgentSpawner::SpawnActorsStart()
 {
+	PRINT_STRING(TEXT("Spawning agents start"))
 	if (TotalToSpawn > 0) {
 		for (uint8 i = 1; i <= TotalToSpawn; i++) {
-			PRINT_STRING(TEXT("Spawning agents start"))
+			
 			FVector Location = FVector(CalculatePerlinX(), CalculatePerlinY(), 50.f);
-			SpawnActorAtLocation(Location);
+			World->SpawnActor<AAgent>(ClassToSpawn, Location, FRotator(0.f, 0.f, 0.f));
+			
 		}
 	}
-}
-
-
-void AAgentSpawner::SpawnActorAtLocation(FVector Location)
-{
-	if (World && AgentsToSpawn.Num() > 0) {
-		const uint8 selection = FMath::RandRange(0, AgentsToSpawn.Num() - 1);
-		World->SpawnActor<AAgent>(AgentsToSpawn[selection], Location, FRotator(0.f, 0.f, 0.f));
-	}
+	PRINT_STRING(TEXT("Spawning Agents end"))
 }
 
 void AAgentSpawner::SpawnActorGenerated(AAgent* ActorToSpawn, FVector Location)
 {
-	if (World) {
+	if (World && ActorToSpawn) {
 		FActorSpawnParameters SpawnParameters;
-		UClass* MyActorBPClass = StaticLoadClass(ActorToSpawn->StaticClass(), NULL, TEXT("BP_Agent"), NULL, LOAD_None, NULL);
-		World->SpawnActor<AAgent>(MyActorBPClass, Location, FRotator(0.f, 0.f, 0.f), SpawnParameters);
+		if (ClassToSpawn == ActorToSpawn->GetClass()) {
+			UClass* AgentClass = ActorToSpawn->StaticClass();
+			World->SpawnActor<AAgent>(AgentClass, Location, FRotator(0.f, 0.f, 0.f), SpawnParameters);
+		}
+		
 	}
 }
 
@@ -73,31 +69,70 @@ float AAgentSpawner::CalculatePerlinY()
 
 void AAgentSpawner::Selection()
 {
+	PRINT_STRING(TEXT("Selection process is going to start"))
 	if (Population.Num() == 0) GetAllAgents();
-	if (CheckPopulation()) return;;
-	for (uint8 i = 0; i < Population.Num(); i++) {
+	TArray<AAgent*> CopyPop;
+	int32 i = 0;
+	PRINT_INT(i)
+	for (int32 j = 0; j <= Population.Num() - 1; j++) {
+		CopyPop.Add(Population[j]);
+	}
+	for (i; i <= CopyPop.Num() - 1; i++) {
+		PRINT_STRING(TEXT("Starting selection process"))
 		uint8 SelectionFirst = UKismetMathLibrary::RandomInteger(Population.Num() - 1);
-		uint8 SelectionSecond = UKismetMathLibrary::RandomInteger(Population.Num() - 1);
+		uint8 SelectionSecond;
+		do {
+			SelectionSecond = UKismetMathLibrary::RandomInteger(Population.Num() - 1);
+		} while (SelectionSecond == SelectionFirst);
+		PRINT_INT(SelectionFirst)
+		PRINT_INT(SelectionSecond)
 		FirstCandidate = Population[SelectionFirst];
 		SecondCandidate = Population[SelectionSecond];
-		PRINT_STRING(UKismetSystemLibrary::GetObjectName(FirstCandidate))
-		PRINT_STRING(UKismetSystemLibrary::GetObjectName(SecondCandidate))
-		if (FirstCandidate->Attributes && SecondCandidate->Attributes) {
-			UAgentAttribute* FirstAttribute = FirstCandidate->Attributes;
-			UAgentAttribute* SecondAttribute = SecondCandidate->Attributes;
-			if (FirstAttribute->SurvivabilityScore > SecondAttribute->SurvivabilityScore) {
-				Population.Remove(FirstCandidate);
-				Population.Remove(SecondCandidate);
+		FString DebugText = UKismetSystemLibrary::GetObjectName(FirstCandidate);
+		FString DebugTextTwo = UKismetSystemLibrary::GetObjectName(SecondCandidate);
+		PRINT_STRING(DebugText)
+		PRINT_STRING(DebugTextTwo)
+		
+		if (FirstCandidate != nullptr && SecondCandidate == nullptr) {
+			if (FirstCandidate->GetClass() == ClassToSpawn) {
+				Population.RemoveAt(SelectionFirst);
 				NewPopulation.Add(FirstCandidate);
 			}
-			else {
-				Population.Remove(FirstCandidate);
-				Population.Remove(SecondCandidate);
+		}
+		if (FirstCandidate == nullptr && SecondCandidate != nullptr) {
+			if (SecondCandidate->GetClass() == ClassToSpawn) {
+				Population.RemoveAt(SelectionSecond);
 				NewPopulation.Add(SecondCandidate);
 			}
 		}
+		if (FirstCandidate != nullptr && SecondCandidate != nullptr) {
+			PRINT_STRING(TEXT("Hi, 1"))
+			if (FirstCandidate->GetClass() == ClassToSpawn && SecondCandidate->GetClass() == ClassToSpawn) {
+				PRINT_STRING(TEXT("Hi, 2"))
+				if (FirstCandidate->Attributes && SecondCandidate->Attributes) {
+					PRINT_STRING(TEXT("Hi, 3"))  
+					UAgentAttribute* FirstAttribute = FirstCandidate->Attributes;
+					UAgentAttribute* SecondAttribute = SecondCandidate->Attributes;
+					if (FirstAttribute->SurvivabilityScore > SecondAttribute->SurvivabilityScore) {
+						PRINT_STRING(TEXT("Removing first cand from pop"))
+						Population.RemoveAt(SelectionFirst);
+						NewPopulation.Add(FirstCandidate);
+					}
+					else {
+						PRINT_STRING(TEXT("Removing sec cand from pop"))
+						Population.RemoveAt(SelectionSecond);
+						NewPopulation.Add(SecondCandidate);
+					}
+					
+				}
+			}
+		}
+		PRINT_INT(Population.Num() - 1)
+		PRINT_INT(i)
 	}
-	Crossover();
+	PRINT_STRING("Selection done")
+	return;
+	//Crossover();
 }
 
 void AAgentSpawner::Crossover()
@@ -106,19 +141,16 @@ void AAgentSpawner::Crossover()
 	//Add a specie check or just duplicate the spawners. Check impact on program performance.
 	PRINT_STRING(TEXT("Starting crossover"))
 	if (CheckNewPopulation()) return;;
-	for (uint8 i = 0; i < NewPopulation.Num() - 1; i++) {
-		uint8 SelectionFirst = UKismetMathLibrary::RandomInteger(NewPopulation.Num() - 1);
-		uint8 SelectionSecond = UKismetMathLibrary::RandomInteger(NewPopulation.Num() - 1);
-		AAgent* FirstParent = Population[SelectionFirst];
-		AAgent* SecondParent = Population[SelectionSecond];
-		ChildOne = FirstParent;
-		ChildTwo = NewObject<AAgent>(this, "ChildTwo");
+	for (int32 i = 0; i < NewPopulation.Num(); i++) {
+		AAgent* FirstParent = Population[i];
+		AAgent* SecondParent = Population[i+1];
+		ChildOne = NewObject<AAgent>(GetWorld(), ClassToSpawn, FName("ChildOne" + i));
+		ChildTwo = NewObject<AAgent>(GetWorld(), ClassToSpawn, FName("ChildTwo" + i));
 		if (FirstParent->Attributes && SecondParent->Attributes) {
 			UAgentAttribute* FirstAttribute = FirstParent->Attributes;
 			UAgentAttribute* SecondAttribute = SecondParent->Attributes;
 			for (uint8 j = 0; j <= FirstAttribute->DNA.Num() - 1; j++) {
 				CrossoverChance = UKismetMathLibrary::RandomFloat();
-				
 				if (CrossoverChance >= 0.5f) {
 					if (ChildOne->Attributes && ChildTwo->Attributes) {
 						ChildOne->Attributes->DNA[j] = FirstAttribute->DNA[j];
@@ -134,9 +166,8 @@ void AAgentSpawner::Crossover()
 			}
 			RemoveParentsFromPopulation(FirstParent, SecondParent);
 			DestroyParents(FirstParent, SecondParent);
-			GetAllAgents();
-			MutateChildren();
-			SpawnChildren();
+			//MutateChildren();
+			//SpawnChildren();
 			
 		}
 	}
@@ -146,12 +177,7 @@ void AAgentSpawner::Crossover()
 
 bool AAgentSpawner::CheckNewPopulation()
 {
-	return NewPopulation.Num() == 0 && NewPopulation.Num() % 2 > 0;
-}
-
-bool AAgentSpawner::CheckPopulation()
-{
-	return Population.Num() == 0 && Population.Num() % 2 > 0;
+	return NewPopulation.Num() == 0;
 }
 
 void AAgentSpawner::MutateChildren()
@@ -161,7 +187,7 @@ void AAgentSpawner::MutateChildren()
 	Mutation(ChildTwo);
 }
 
-void AAgentSpawner::DestroyParents(AAgent*& FirstParent, AAgent*& SecondParent)
+void AAgentSpawner::DestroyParents(AAgent* FirstParent, AAgent* SecondParent)
 {
 	FirstParent->Destroy();
 	SecondParent->Destroy();
@@ -169,7 +195,7 @@ void AAgentSpawner::DestroyParents(AAgent*& FirstParent, AAgent*& SecondParent)
 	PRINT_STRING(UKismetSystemLibrary::GetObjectName(SecondParent))
 }
 
-void AAgentSpawner::RemoveParentsFromPopulation(AAgent*& FirstParent, AAgent*& SecondParent)
+void AAgentSpawner::RemoveParentsFromPopulation(AAgent* FirstParent, AAgent* SecondParent)
 {
 	Population.Remove(FirstParent);
 	Population.Remove(SecondParent);
@@ -207,9 +233,17 @@ TArray<AAgent*> AAgentSpawner::GetAllAgents()
 	UKismetSystemLibrary::BoxOverlapActors(World, GetActorLocation(), Box->GetScaledBoxExtent(), OverlapObjectTypes, AAgent::StaticClass(), ActorsToIgnore, OutActors);
 	for (int32 NumOfAgents = 0; NumOfAgents < OutActors.Num(); NumOfAgents++) {
 		AAgent* FoundAgent = Cast<AAgent>(OutActors[NumOfAgents]);
-		Population.AddUnique(FoundAgent);
+		if (FoundAgent)
+		{
+			TSubclassOf<AAgent> FoundAgentClass = FoundAgent->GetClass();
+			if (FoundAgentClass == ClassToSpawn) {
+				Population.Add(FoundAgent);
+				
+			}
+		}
 	}
 	return Population;
+
 }
 
 void AAgentSpawner::StartGenerationTimer()

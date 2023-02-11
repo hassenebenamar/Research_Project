@@ -27,15 +27,14 @@ protected:
 
 	//research functions
 	void SpawnActorsStart();
-	void SpawnActorAtLocation(FVector Location);
 	void SpawnActorGenerated(AAgent* ActorToSpawn, FVector Location);
 
 private:
 
 	//actors to spawns
 	UPROPERTY(EditAnywhere)
-	TArray<TSubclassOf<AAgent>> AgentsToSpawn;
-
+	TSubclassOf<AAgent> ClassToSpawn;
+	UPROPERTY(EditAnywhere)
 	UBoxComponent* Box;
 	// spawning mathematical paramaters
 
@@ -43,16 +42,16 @@ private:
 	uint8 TotalToSpawn;
 
 	UPROPERTY(EditAnywhere)
-		float MaxSpawnRange;
+	float MaxSpawnRange;
 
 	UPROPERTY(EditAnywhere)
-		float PerlinSeed;
+	float PerlinSeed;
 
 	UPROPERTY(EditAnywhere)
-		float MinPerlin;
+	float MinPerlin;
 
 	UPROPERTY(EditAnywhere)
-		float MaxPerlin;
+	float MaxPerlin;
 
 	//spawn functions
 
@@ -71,12 +70,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
 	AAgent* SecondCandidate;
 	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
-		AAgent* ChildOne;
+	AAgent* ChildOne;
 	UPROPERTY(EditAnywhere, Category = "Genetic Algorithm")
-		AAgent* ChildTwo;
-	UPROPERTY(VisibleAnywhere, Category = "Genetic Algorithm")
+	AAgent* ChildTwo;
+	UPROPERTY(EditInstanceOnly, Category = "Genetic Algorithm")
 	TArray<AAgent*> Population;
-	UPROPERTY(VisibleAnywhere, Category = "Genetic Algorithm")
+	UPROPERTY(EditInstanceOnly, Category = "Genetic Algorithm")
 	TArray<AAgent*> NewPopulation;
 
 	TArray<AActor*> ActorsToIgnore;
@@ -87,8 +86,8 @@ private:
 	bool CheckPopulation();
 	bool CheckNewPopulation();
 	void MutateChildren();
-	void DestroyParents(AAgent*& FirstParent, AAgent*& SecondParent);
-	void RemoveParentsFromPopulation(AAgent*& FirstParent, AAgent*& SecondParent);
+	void DestroyParents(AAgent* FirstParent, AAgent* SecondParent);
+	void RemoveParentsFromPopulation(AAgent* FirstParent, AAgent* SecondParent);
 	void SpawnChildren();
 	void Mutation(AAgent* AgentToMutate);
 	TArray<AAgent*> GetAllAgents();

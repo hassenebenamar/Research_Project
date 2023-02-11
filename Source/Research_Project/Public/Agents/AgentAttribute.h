@@ -19,6 +19,9 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	int32 AgentID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<uint8> DNA;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)

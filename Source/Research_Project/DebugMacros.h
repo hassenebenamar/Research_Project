@@ -17,14 +17,18 @@
 #define PRINT_INT(IntToPrint) { \
 	if (this) { \
 		FString DebugString = FString::FromInt(IntToPrint); \
-		UKismetSystemLibrary::PrintString(this, DebugString, true, true, FColor::Purple, 30.f); \
+		UKismetSystemLibrary::PrintString(this, DebugString, true, true, FColor::Green, 30.f); \
 	} \
 }
 
 #define PRINT_BOOL(BoolToPrint) { \
 	if (this) { \
-		uint8 IntToPrint = UKismetMathLibrary::Conv_BoolToInt(BoolToPrint); \
-		FString DebugString = FString::FromInt(IntToPrint); \
-		UKismetSystemLibrary::PrintString(this, DebugString, true, true, FColor::Purple, 30.f); \
-	} \
+		if (BoolToPrint) { \
+			FString DebugString = "true"; \
+			UKismetSystemLibrary::PrintString(this, DebugString, true, true, FColor::Purple, 30.f); \
+		} else { \
+			FString DebugString = "false"; \
+			UKismetSystemLibrary::PrintString(this, DebugString, true, true, FColor::Purple, 30.f); \
+		} \
+	}\
 }

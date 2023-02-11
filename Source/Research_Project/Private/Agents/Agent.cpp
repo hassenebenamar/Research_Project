@@ -21,15 +21,13 @@ AAgent::AAgent() {
 	PrimaryActorTick.bCanEverTick = true;
 
 	Attributes = CreateDefaultSubobject<UAgentAttribute>(TEXT("Attributes"));
-	if (Attributes->DNA.Num() == 0 && Attributes->SurvivabilityScore == 0.f) {
+	if (Attributes->DNA.Num() == 0 && Attributes->SurvivabilityScore == 0.f && Attributes->AgentID == 0) {
 		Attributes->SurvivabilityScore = FMath::FRandRange(0.f, 1.f);
+		Attributes->AgentID = FMath::FRandRange(-2147483647, 2147483647);
 		for (uint8 i = 0; i < 4; i++) {
 			uint8 ChromosomeToAdd = UKismetMathLibrary::RandomInteger(2);
 			Attributes->DNA.Add(ChromosomeToAdd);
 		}
-	}
-	if (AgentMesh) {
-		GetMesh()->SetSkeletalMesh(AgentMesh);
 	}
 }
 
@@ -212,11 +210,11 @@ void AAgent::OnActorOverlap(AActor* OverlappedActor, AActor* OtherActor)
 
 void AAgent::PlaySleepAnim()
 {	
-	USkeletalMeshComponent* AgentMesh = GetMesh();
-	if (AgentMesh && SleepAnim) {
-		AgentMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		AgentMesh->SetAnimation(SleepAnim);
-		AgentMesh->Play(true);
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && SleepAnim) {
+		AgentMeshComponent->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		AgentMeshComponent->SetAnimation(SleepAnim);
+		AgentMeshComponent->Play(true);
 	}
 }
 

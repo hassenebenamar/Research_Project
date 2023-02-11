@@ -33,8 +33,6 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	UAgentAttribute* Attributes;
 
-	UPROPERTY(EditAnywhere, category = "Agent Mesh")
-	USkeletalMesh* AgentMesh;
 protected:
 	virtual void BeginPlay() override;
 
