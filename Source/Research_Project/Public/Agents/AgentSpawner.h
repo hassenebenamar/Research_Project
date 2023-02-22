@@ -82,12 +82,11 @@ private:
 	TArray<AActor*> OutActors;
 
 	void Selection();
+	void RemoveLastParentIfNeeded();
 	void Crossover();
 	bool CheckPopulation();
 	bool CheckNewPopulation();
 	void MutateChildren();
-	void DestroyParents(AAgent* FirstParent, AAgent* SecondParent);
-	void RemoveParentsFromPopulation(AAgent* FirstParent, AAgent* SecondParent);
 	void SpawnChildren();
 	void Mutation(AAgent* AgentToMutate);
 	TArray<AAgent*> GetAllAgents();

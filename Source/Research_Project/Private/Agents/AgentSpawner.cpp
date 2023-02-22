@@ -73,25 +73,27 @@ void AAgentSpawner::Selection()
 	if (Population.Num() == 0) GetAllAgents();
 	TArray<AAgent*> CopyPop;
 	int32 i = 0;
-	PRINT_INT(i)
 	for (int32 j = 0; j <= Population.Num() - 1; j++) {
 		CopyPop.Add(Population[j]);
 	}
-	for (i; i <= CopyPop.Num() - 1; i++) {
-		PRINT_STRING(TEXT("Starting selection process"))
-		uint8 SelectionFirst = UKismetMathLibrary::RandomInteger(Population.Num() - 1);
+	for (i; i < CopyPop.Num(); i++) {
+		uint8 SelectionFirst = UKismetMathLibrary::RandomInteger(Population.Num());
 		uint8 SelectionSecond;
 		do {
-			SelectionSecond = UKismetMathLibrary::RandomInteger(Population.Num() - 1);
+			if (Population.Num() == 1) {
+				SelectionFirst = 0;
+				SelectionSecond = 2;
+				FirstCandidate = Population[SelectionFirst];
+				SecondCandidate = nullptr;
+			}
+			else {
+				SelectionSecond = UKismetMathLibrary::RandomInteger(Population.Num());
+				FirstCandidate = Population[SelectionFirst];
+				SecondCandidate = Population[SelectionSecond];
+			}
 		} while (SelectionSecond == SelectionFirst);
-		PRINT_INT(SelectionFirst)
-		PRINT_INT(SelectionSecond)
-		FirstCandidate = Population[SelectionFirst];
-		SecondCandidate = Population[SelectionSecond];
-		FString DebugText = UKismetSystemLibrary::GetObjectName(FirstCandidate);
-		FString DebugTextTwo = UKismetSystemLibrary::GetObjectName(SecondCandidate);
-		PRINT_STRING(DebugText)
-		PRINT_STRING(DebugTextTwo)
+		//FString DebugText = UKismetSystemLibrary::GetObjectName(FirstCandidate);
+		//FString DebugTextTwo = UKismetSystemLibrary::GetObjectName(SecondCandidate);
 		
 		if (FirstCandidate != nullptr && SecondCandidate == nullptr) {
 			if (FirstCandidate->GetClass() == ClassToSpawn) {
@@ -106,20 +108,15 @@ void AAgentSpawner::Selection()
 			}
 		}
 		if (FirstCandidate != nullptr && SecondCandidate != nullptr) {
-			PRINT_STRING(TEXT("Hi, 1"))
 			if (FirstCandidate->GetClass() == ClassToSpawn && SecondCandidate->GetClass() == ClassToSpawn) {
-				PRINT_STRING(TEXT("Hi, 2"))
 				if (FirstCandidate->Attributes && SecondCandidate->Attributes) {
-					PRINT_STRING(TEXT("Hi, 3"))  
 					UAgentAttribute* FirstAttribute = FirstCandidate->Attributes;
 					UAgentAttribute* SecondAttribute = SecondCandidate->Attributes;
 					if (FirstAttribute->SurvivabilityScore > SecondAttribute->SurvivabilityScore) {
-						PRINT_STRING(TEXT("Removing first cand from pop"))
 						Population.RemoveAt(SelectionFirst);
 						NewPopulation.Add(FirstCandidate);
 					}
 					else {
-						PRINT_STRING(TEXT("Removing sec cand from pop"))
 						Population.RemoveAt(SelectionSecond);
 						NewPopulation.Add(SecondCandidate);
 					}
@@ -127,12 +124,10 @@ void AAgentSpawner::Selection()
 				}
 			}
 		}
-		PRINT_INT(Population.Num() - 1)
-		PRINT_INT(i)
 	}
 	PRINT_STRING("Selection done")
-	return;
-	//Crossover();
+	RemoveLastParentIfNeeded();
+	Crossover();
 }
 
 void AAgentSpawner::Crossover()
@@ -140,12 +135,17 @@ void AAgentSpawner::Crossover()
 	//Use uniform crossover (every chromosome has a chance to be in the child 1 or 2)
 	//Add a specie check or just duplicate the spawners. Check impact on program performance.
 	PRINT_STRING(TEXT("Starting crossover"))
-	if (CheckNewPopulation()) return;;
-	for (int32 i = 0; i < NewPopulation.Num(); i++) {
-		AAgent* FirstParent = Population[i];
-		AAgent* SecondParent = Population[i+1];
-		ChildOne = NewObject<AAgent>(GetWorld(), ClassToSpawn, FName("ChildOne" + i));
-		ChildTwo = NewObject<AAgent>(GetWorld(), ClassToSpawn, FName("ChildTwo" + i));
+	if (CheckNewPopulation()) return;
+	for (int32 j = 0; j <= NewPopulation.Num() - 1; j++) {
+		Population.Add(NewPopulation[j]);
+	}
+	PRINT_INT(Population.Num())
+	int32 i = 0;
+	for (i; i < Population.Num() / 2; i++) {
+		AAgent* FirstParent = NewPopulation[0];
+		AAgent* SecondParent = NewPopulation[1];
+		ChildOne = NewObject<AAgent>(GetWorld(), ClassToSpawn);
+		ChildTwo = NewObject<AAgent>(GetWorld(), ClassToSpawn);
 		if (FirstParent->Attributes && SecondParent->Attributes) {
 			UAgentAttribute* FirstAttribute = FirstParent->Attributes;
 			UAgentAttribute* SecondAttribute = SecondParent->Attributes;
@@ -164,13 +164,19 @@ void AAgentSpawner::Crossover()
 					}
 				}
 			}
-			RemoveParentsFromPopulation(FirstParent, SecondParent);
-			DestroyParents(FirstParent, SecondParent);
-			//MutateChildren();
+			NewPopulation.Remove(FirstParent);
+			NewPopulation.Remove(SecondParent);
+			FirstParent->Destroy();
+			SecondParent->Destroy();
+			//PRINT_STRING(UKismetSystemLibrary::GetObjectName(FirstParent))
+			//PRINT_STRING(UKismetSystemLibrary::GetObjectName(SecondParent))
+			MutateChildren();
 			//SpawnChildren();
 			
 		}
 	}
+	PRINT_STRING(TEXT("Crossover done"))
+	return;
 	ClearGenerationTimer();
 	StartGenerationTimer();
 }
@@ -180,25 +186,18 @@ bool AAgentSpawner::CheckNewPopulation()
 	return NewPopulation.Num() == 0;
 }
 
+void AAgentSpawner::RemoveLastParentIfNeeded()
+{
+	//this function is to trim the new population in case there is an agent that's gonna end up alone in the crossover process
+	//ask Mr.Tanev about this case
+	if (NewPopulation.Num() % 2 > 0) NewPopulation.RemoveAt(NewPopulation.Num() - 1);
+}
+
 void AAgentSpawner::MutateChildren()
 {
 	if (ChildOne == nullptr || ChildTwo == nullptr) return;
 	Mutation(ChildOne);
 	Mutation(ChildTwo);
-}
-
-void AAgentSpawner::DestroyParents(AAgent* FirstParent, AAgent* SecondParent)
-{
-	FirstParent->Destroy();
-	SecondParent->Destroy();
-	PRINT_STRING(UKismetSystemLibrary::GetObjectName(FirstParent))
-	PRINT_STRING(UKismetSystemLibrary::GetObjectName(SecondParent))
-}
-
-void AAgentSpawner::RemoveParentsFromPopulation(AAgent* FirstParent, AAgent* SecondParent)
-{
-	Population.Remove(FirstParent);
-	Population.Remove(SecondParent);
 }
 
 void AAgentSpawner::SpawnChildren()
@@ -212,9 +211,9 @@ void AAgentSpawner::SpawnChildren()
 void AAgentSpawner::Mutation(AAgent* AgentToMutate)
 {
 	if (AgentToMutate->Attributes == nullptr) return;
-	for (uint8 i = 0; i < AgentToMutate->Attributes->DNA.Num() - 1; i++) {
+	for (uint8 i = 0; i < AgentToMutate->Attributes->DNA.Num(); i++) {
 		MutationChance = UKismetMathLibrary::RandomFloat();
-		if (MutationChance <= 0.10f) {
+		if (MutationChance > 0.79f) {
 			if (AgentToMutate->Attributes->DNA[i] == 0) AgentToMutate->Attributes->DNA[i]++;
 			else AgentToMutate->Attributes->DNA[i]--;
 		}
