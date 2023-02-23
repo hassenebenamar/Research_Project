@@ -27,7 +27,7 @@ protected:
 
 	//research functions
 	void SpawnActorsStart();
-	void SpawnActorGenerated(AAgent* ActorToSpawn, FVector Location);
+	void SpawnOffspring(TArray<AAgent*> ActorsToSpawn);
 
 private:
 
@@ -77,6 +77,10 @@ private:
 	TArray<AAgent*> Population;
 	UPROPERTY(EditInstanceOnly, Category = "Genetic Algorithm")
 	TArray<AAgent*> NewPopulation;
+	UPROPERTY(EditInstanceOnly, Category = "Genetic Algorithm")
+	TArray<AAgent*> OffspringPopulation;
+	UPROPERTY(EditInstanceOnly, Category = "Genetic Algorithm")
+	TArray<AAgent*>ActorsSpawned;
 
 	TArray<AActor*> ActorsToIgnore;
 	TArray<AActor*> OutActors;
@@ -84,10 +88,8 @@ private:
 	void Selection();
 	void RemoveLastParentIfNeeded();
 	void Crossover();
-	bool CheckPopulation();
 	bool CheckNewPopulation();
 	void MutateChildren();
-	void SpawnChildren();
 	void Mutation(AAgent* AgentToMutate);
 	TArray<AAgent*> GetAllAgents();
 

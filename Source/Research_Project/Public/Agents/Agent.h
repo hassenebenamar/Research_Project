@@ -23,6 +23,8 @@ class RESEARCH_PROJECT_API AAgent : public ACharacter
 	GENERATED_BODY()
 
 public:
+
+	//default constructor
 	AAgent();
 
 	virtual void Tick(float DeltaTime) override;
@@ -32,6 +34,8 @@ public:
 	//atributes
 	UPROPERTY(VisibleAnywhere)
 	UAgentAttribute* Attributes;
+
+	void CopyObject(const AAgent& ObjectToCopy);
 
 protected:
 	virtual void BeginPlay() override;

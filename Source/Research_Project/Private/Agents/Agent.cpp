@@ -23,10 +23,46 @@ AAgent::AAgent() {
 	Attributes = CreateDefaultSubobject<UAgentAttribute>(TEXT("Attributes"));
 	if (Attributes->DNA.Num() == 0 && Attributes->SurvivabilityScore == 0.f && Attributes->AgentID == 0) {
 		Attributes->SurvivabilityScore = FMath::FRandRange(0.f, 1.f);
-		Attributes->AgentID = FMath::FRandRange(-2147483647, 2147483647);
+		//Attributes->AgentID = FMath::FRandRange(-2147483647, 2147483647);
+		Attributes->AgentID = FMath::FRandRange(0, 100);
 		for (uint8 i = 0; i < 4; i++) {
 			uint8 ChromosomeToAdd = UKismetMathLibrary::RandomInteger(2);
 			Attributes->DNA.Add(ChromosomeToAdd);
+		}
+	}
+}
+
+void AAgent::CopyObject(const AAgent& ObjectToCopy)
+{
+	{	
+		if (this == nullptr) return;
+		if (!ObjectToCopy.IsValidLowLevel()) return;
+
+		// Get the class of the object to copy
+		UClass* ClassToCopy = ObjectToCopy.GetClass();
+
+		if (ClassToCopy == nullptr) return;
+
+		// Loop through all properties of the class and copy their values
+		for (TFieldIterator<FProperty> PropIt(ClassToCopy); PropIt; ++PropIt)
+		{
+			FProperty* Property = *PropIt;
+			
+			if (Property == nullptr) return;
+
+			// Ignore properties that are not editable or not replicated
+			if (!Property->HasAnyPropertyFlags(CPF_Edit | CPF_Net))
+			{
+				continue;
+			}
+
+			// Get the value of the property on the other object
+			const uint8* ValuePtr = Property->ContainerPtrToValuePtr<uint8>(&ObjectToCopy);
+
+			if (ValuePtr == nullptr) return;
+
+			// Set the value of the property on this object
+			Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<uint8>(this), ValuePtr);
 		}
 	}
 }

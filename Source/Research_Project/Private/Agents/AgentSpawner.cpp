@@ -41,15 +41,26 @@ void AAgentSpawner::SpawnActorsStart()
 	PRINT_STRING(TEXT("Spawning Agents end"))
 }
 
-void AAgentSpawner::SpawnActorGenerated(AAgent* ActorToSpawn, FVector Location)
+void AAgentSpawner::SpawnOffspring(TArray<AAgent*> ActorsToSpawn)
 {
-	if (World && ActorToSpawn) {
+	if (World && ActorsToSpawn.Num() > 0) {
 		FActorSpawnParameters SpawnParameters;
-		if (ClassToSpawn == ActorToSpawn->GetClass()) {
-			UClass* AgentClass = ActorToSpawn->StaticClass();
-			World->SpawnActor<AAgent>(AgentClass, Location, FRotator(0.f, 0.f, 0.f), SpawnParameters);
+		for (int32 i = 0; i < ActorsToSpawn.Num(); i++) {
+			AAgent* ActorToSpawn = ActorsToSpawn[i];
+			if (ActorToSpawn != nullptr) {
+				UClass* AgentClass = ActorToSpawn->GetClass();
+				if (ClassToSpawn == AgentClass) {
+					AAgent* NewAgent;
+					do {
+						FVector Location = FVector(CalculatePerlinX(), CalculatePerlinY(), 50.f);
+						NewAgent = World->SpawnActor<AAgent>(AgentClass, Location, FRotator(0.f, 0.f, 0.f), SpawnParameters);
+					} while (NewAgent == nullptr);
+					NewAgent->CopyObject(*ActorToSpawn);
+					NewAgent->Tags.Add(TEXT("Spawned Agent"));
+					ActorsSpawned.Add(NewAgent);
+				}
+			}
 		}
-		
 	}
 }
 
@@ -141,11 +152,14 @@ void AAgentSpawner::Crossover()
 	}
 	PRINT_INT(Population.Num())
 	int32 i = 0;
-	for (i; i < Population.Num() / 2; i++) {
+	int32 PopNum = Population.Num() - 1;
+	while (NewPopulation.Num() > 1) {
 		AAgent* FirstParent = NewPopulation[0];
 		AAgent* SecondParent = NewPopulation[1];
 		ChildOne = NewObject<AAgent>(GetWorld(), ClassToSpawn);
+		ChildOne->Tags.Add(TEXT("Offspring"));
 		ChildTwo = NewObject<AAgent>(GetWorld(), ClassToSpawn);
+		ChildTwo->Tags.Add(TEXT("Offspring"));
 		if (FirstParent->Attributes && SecondParent->Attributes) {
 			UAgentAttribute* FirstAttribute = FirstParent->Attributes;
 			UAgentAttribute* SecondAttribute = SecondParent->Attributes;
@@ -166,16 +180,16 @@ void AAgentSpawner::Crossover()
 			}
 			NewPopulation.Remove(FirstParent);
 			NewPopulation.Remove(SecondParent);
-			FirstParent->Destroy();
-			SecondParent->Destroy();
-			//PRINT_STRING(UKismetSystemLibrary::GetObjectName(FirstParent))
-			//PRINT_STRING(UKismetSystemLibrary::GetObjectName(SecondParent))
+			FirstParent->Destroy(true);
+			SecondParent->Destroy(true);
+			/*PRINT_STRING(UKismetSystemLibrary::GetObjectName(FirstParent))
+			PRINT_STRING(UKismetSystemLibrary::GetObjectName(SecondParent))*/
 			MutateChildren();
-			//SpawnChildren();
-			
 		}
 	}
 	PRINT_STRING(TEXT("Crossover done"))
+	PRINT_STRING(TEXT("Time to spawn the new population offspring"))
+	SpawnOffspring(OffspringPopulation);
 	return;
 	ClearGenerationTimer();
 	StartGenerationTimer();
@@ -190,22 +204,24 @@ void AAgentSpawner::RemoveLastParentIfNeeded()
 {
 	//this function is to trim the new population in case there is an agent that's gonna end up alone in the crossover process
 	//ask Mr.Tanev about this case
-	if (NewPopulation.Num() % 2 > 0) NewPopulation.RemoveAt(NewPopulation.Num() - 1);
+	if (NewPopulation.Num() % 2 > 0) {
+		AAgent* AgentToRemove = NewPopulation[NewPopulation.Num() - 1];
+		if (AgentToRemove) {
+			NewPopulation.Remove(AgentToRemove);
+			AgentToRemove->Destroy();
+		}
+	}
 }
 
 void AAgentSpawner::MutateChildren()
 {
 	if (ChildOne == nullptr || ChildTwo == nullptr) return;
-	Mutation(ChildOne);
-	Mutation(ChildTwo);
-}
 
-void AAgentSpawner::SpawnChildren()
-{
-	FVector LocationOne = FVector(CalculatePerlinX(), CalculatePerlinY(), 50.f);
-	FVector LocationTwo = FVector(CalculatePerlinX(), CalculatePerlinY(), 50.f);
-	SpawnActorGenerated(ChildOne, LocationOne);
-	SpawnActorGenerated(ChildTwo, LocationTwo);
+	//Mutation process and adding children to the offspring Tarray for spawning functions
+	Mutation(ChildOne);
+	OffspringPopulation.Add(ChildOne);
+	Mutation(ChildTwo);
+	OffspringPopulation.Add(ChildTwo);
 }
 
 void AAgentSpawner::Mutation(AAgent* AgentToMutate)
