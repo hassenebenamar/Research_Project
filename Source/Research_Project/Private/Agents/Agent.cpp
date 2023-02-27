@@ -8,12 +8,16 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/AudioComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AIPerceptionSystem.h"
 #include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/PawnSensingComponent.h"
+#include "MetasoundSource.h"
+#include "Sound/SoundWave.h"
 #include "NavigationSystem.h"
 
 AAgent::AAgent() {
@@ -24,7 +28,7 @@ AAgent::AAgent() {
 	if (Attributes->DNA.Num() == 0 && Attributes->SurvivabilityScore == 0.f && Attributes->AgentID == 0) {
 		Attributes->SurvivabilityScore = FMath::FRandRange(0.f, 1.f);
 		//Attributes->AgentID = FMath::FRandRange(-2147483647, 2147483647);
-		Attributes->AgentID = FMath::FRandRange(0, 100);
+		Attributes->AgentID = FMath::RandRange(0, 100);
 		for (uint8 i = 0; i < 4; i++) {
 			uint8 ChromosomeToAdd = UKismetMathLibrary::RandomInteger(2);
 			Attributes->DNA.Add(ChromosomeToAdd);
@@ -123,11 +127,11 @@ bool AAgent::IsInCombatRange(AAgent* Target)
 	return GetActorLocation().X - Enemy->GetActorLocation().X >= CombatRadius;
 }
 
-void AAgent::ActorSeen(AActor* SeenActor, FAIStimulus Stimulus)
+void AAgent::HostileAgentDetected(AActor* DetectedAgent, FAIStimulus Stimulus)
 {
 	TSubclassOf<UAISense> Sense = UAIPerceptionSystem::GetSenseClassForStimulus(this, Stimulus);
 	if (Sense) {
-		Enemy = Cast<AAgent>(SeenActor);
+		Enemy = Cast<AAgent>(DetectedAgent);
 		if (Enemy) {
 			ReactToEnemy();
 			if (IsInCombatRange(Enemy)) Attack();
@@ -137,7 +141,7 @@ void AAgent::ActorSeen(AActor* SeenActor, FAIStimulus Stimulus)
 
 void AAgent::ReactToEnemy()
 {
-	if (Attributes && AgentController && Attributes) {
+	if (Attributes && AgentController && Enemy && Enemy->Attributes) {
 		Attributes->AnimalState = EAnimalState::EAS_Active;
 		EAgentSpecie AgentSpecie = Enemy->Attributes->AgentSpecie;
 		if (Preys.Contains(AgentSpecie)) {
@@ -145,6 +149,47 @@ void AAgent::ReactToEnemy()
 		}
 		if (Predators.Contains(AgentSpecie)) {
 			RunAway();
+		}
+	}
+}
+
+bool AAgent::SphereTrace()
+{
+	if (!World || !Attributes) return false;
+	if (World && Attributes) {
+		FVector StartLocation = GetActorLocation() + FVector(0.f, 0.f, Attributes->SightOffset);
+		FVector EndLocation = GetActorLocation() + Attributes->SightRange;
+		float Radius = Attributes->SightRadius * 0.5f;
+		TArray<FHitResult> HitResults;
+		FCollisionQueryParams QueryParams;
+		bool bIsHit = World->SweepMultiByChannel(HitResults,StartLocation,EndLocation,FQuat::Identity,ECC_Visibility,FCollisionShape::MakeSphere(Radius),QueryParams);
+		if (!bIsHit) return false;
+		for (FHitResult& HitResult : HitResults) {
+			AEnvironmentActor* HitTarget = Cast<AEnvironmentActor>(HitResult.GetActor());
+			if (HitTarget) {
+				GreenTargets.Add(HitTarget);
+			}
+		}
+	}
+	return true;
+}
+
+void AAgent::ReactToGreenTarget()
+{
+	ClearGreenTargetTimer();
+	if(!SphereTrace()) return;
+	if (GreenTargets.Num() > 0) {
+		AEnvironmentActor* ClosestGreenTarget = nullptr;
+		float ClosestDistance = TNumericLimits<float>::Max();
+		for (AEnvironmentActor* GreenTarget : GreenTargets) {
+			float Distance = FVector::Distance(GetActorLocation(), GreenTarget->GetActorLocation());
+			if (Distance < ClosestDistance) {
+				ClosestGreenTarget = GreenTarget;
+				ClosestDistance = Distance;
+			}
+		}
+		if (ClosestGreenTarget) {
+			MoveToTarget(ClosestGreenTarget);
 		}
 	}
 }
@@ -201,7 +246,6 @@ void AAgent::RunAway()
 void AAgent::GetRunAwayLocation()
 {
 	if (AgentController) {
-		PRINT_STRING(TEXT("Getting enemy location"))
 		FVector AgentLocation = GetActorLocation();
 		FVector EnemyLocation = Enemy->GetActorLocation();
 		FRotator Rotation = UKismetMathLibrary::FindLookAtRotation(AgentLocation, EnemyLocation);
@@ -235,6 +279,16 @@ void AAgent::ClearAttackTimer()
 	GetWorldTimerManager().ClearTimer(AttackTimer);
 }
 
+void AAgent::StartGreenTargetTimer()
+{
+	GetWorldTimerManager().SetTimer(GreenTargetTimerHandler, this, &AAgent::ReactToGreenTarget, 1.f);
+}
+
+void AAgent::ClearGreenTargetTimer()
+{
+	GetWorldTimerManager().ClearTimer(GreenTargetTimerHandler);
+}
+
 void AAgent::OnActorOverlap(AActor* OverlappedActor, AActor* OtherActor)
 {	
 	OverlappedEnvActor = Cast<AEnvironmentActor>(OverlappedActor);
@@ -244,30 +298,50 @@ void AAgent::OnActorOverlap(AActor* OverlappedActor, AActor* OtherActor)
 	}
 }
 
+
 void AAgent::PlaySleepAnim()
 {	
 	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
-	if (AgentMeshComponent && SleepAnim) {
-		AgentMeshComponent->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		AgentMeshComponent->SetAnimation(SleepAnim);
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[0]);
 		AgentMeshComponent->Play(true);
 	}
 }
 
 void AAgent::PlayGetUpAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[1]);
+		AgentMeshComponent->Play(false);
+	}
 }
 
 void AAgent::PlayRunAwayAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[2]);
+		AgentMeshComponent->Play(true);
+	}
 }
 
 void AAgent::PlayHuntingAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[3]);
+		AgentMeshComponent->Play(true);
+	}
 }
 
 void AAgent::PlayEatingAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[4]);
+		AgentMeshComponent->Play(true);
+	}
 }
 
 void AAgent::PlayAttackMontage()

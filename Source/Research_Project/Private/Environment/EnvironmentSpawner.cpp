@@ -3,6 +3,7 @@
 
 #include "Environment/EnvironmentSpawner.h"
 #include "Environment/EnvironmentActor.h"
+#include "Research_Project/DebugMacros.h"
 #include "Components/BoxComponent.h"
 
 AEnvironmentSpawner::AEnvironmentSpawner()
@@ -23,6 +24,7 @@ void AEnvironmentSpawner::BeginPlay()
 void AEnvironmentSpawner::SpawnActors()
 {
 	if (TotalToSpawn > 0) {
+		PRINT_STRING(TEXT("Spawning actors"))
 		for (int32 i = 0; i < TotalToSpawn; i++) {
 			FVector Location = FVector(CalculatePerlinX(), CalculatePerlinY(), 200.f);
 			SpawnActorAtLocation(Location);

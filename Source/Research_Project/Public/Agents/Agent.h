@@ -12,6 +12,8 @@
 class UAgentAttribute;
 class AEnvironmentActor;
 class UAIPerceptionComponent;
+class UAISenseConfig_Sight;
+class UAISenseConfig_Hearing;
 class UPawnSensingComponent;
 class UAISenseConfig_Sight;
 class AAIController;
@@ -51,16 +53,52 @@ protected:
 	UPROPERTY(EditAnywhere)
 	float CombatRadius;
 	//functions 
+
+	// Red targets functions (callable by children classes)
+
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	bool IsInCombatRange(AAgent* Target);
-	UFUNCTION(BlueprintCallable)
-	void ActorSeen(AActor* SeenActor, FAIStimulus Stimulus);
 
+	UFUNCTION(BlueprintCallable)
+	void HostileAgentDetected(AActor* DetectedAgent, FAIStimulus Stimulus);
 	void ReactToEnemy();
+
+	//Green targets functions (usable by children)
+
+	bool SphereTrace();
+	void ReactToGreenTarget();
+
+	// Moving function (can be called no matter the typename as long as it's an actor)
 
 	template<typename T>
 	void MoveToTarget(T* SeenTarget);
+
+	//play animations (usable by children)
+
+	UPROPERTY(VisibleAnywhere, Category = "Agent Animations")
+	TArray<class UAnimSequence*> AnimArray;
+	UPROPERTY(EditAnywhere, Category = "Agent Animations")
+		class UAnimMontage* AttackMontage;
+	UPROPERTY(EditAnywhere, Category = "Agent Animations")
+		UAnimMontage* DeathMontage;
+
+	void PlaySleepAnim();
+	void PlayGetUpAnim();
+	void PlayRunAwayAnim();
+	void PlayHuntingAnim();
+	void PlayEatingAnim();
+	void PlayAttackMontage();
+	void PlayDeathMontage();
+
+	//Senses config
+
+	UPROPERTY(EditAnywhere, Category = "AI Senses")
+	UAISenseConfig_Sight* SightConfig;
+	UPROPERTY(EditAnywhere, Category = "AI Senses")
+	UAISenseConfig_Hearing* HearingConfig;
+	UPROPERTY(EditAnywhere, Category = "AI Senses")
+	UAIPerceptionComponent* PerceptionComponent;
 
 private:
 	//AI Behavior
@@ -79,6 +117,7 @@ private:
 	//green targets
 	UPROPERTY(EditAnywhere, category = "Green Targets")
 	TArray<EEnvActorType> GreenFood;
+	TArray<AEnvironmentActor*> GreenTargets;
 
 	void GetRunAwayLocation();
 
@@ -95,8 +134,13 @@ private:
 	float AttackTime;
 
 	FTimerHandle AttackTimer;
+	
 	void StartAttackTimer();
 	void ClearAttackTimer();
+
+	FTimerHandle GreenTargetTimerHandler;
+	void StartGreenTargetTimer();
+	void ClearGreenTargetTimer();
 
 	// interaction with environment
 
@@ -106,30 +150,6 @@ private:
 	UFUNCTION(BlueprintCallable)
 	void OnActorOverlap(AActor* OverlappedActor, AActor* OtherActor);
 
-	//play animations
-
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	class UAnimSequence* SleepAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* GetUpAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* RunAwayAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* HuntingAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* EatingAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	class UAnimMontage* AttackMontage;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimMontage* DeathMontage;
-
-	void PlaySleepAnim();
-	void PlayGetUpAnim();
-	void PlayRunAwayAnim();
-	void PlayHuntingAnim();
-	void PlayEatingAnim();
-	void PlayAttackMontage();
-	void PlayDeathMontage();
 };
 
 template<typename T>

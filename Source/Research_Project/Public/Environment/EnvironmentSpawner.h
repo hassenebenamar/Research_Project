@@ -31,7 +31,7 @@ private:
 	//actor to spawn
 
 	UPROPERTY(EditAnywhere)
-		TArray<TSubclassOf<AEnvironmentActor>> ActorsToSpawn;
+	TArray<TSubclassOf<AEnvironmentActor>> ActorsToSpawn;
 
 	UBoxComponent* Box;
 

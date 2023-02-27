@@ -26,7 +26,15 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	EAgentSpecie AgentSpecie;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
+		float SightRange;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
+		float SightOffset;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
+		float SightRadius;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
+		float HearingThreshold;
 	//research variables
 
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
@@ -53,6 +61,7 @@ private:
 		uint8 AgentSize;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
 		uint8 Energy;
+	
 	//environment variables
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
 	EEnvType IdealEnvironment;

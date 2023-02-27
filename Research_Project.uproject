@@ -28,6 +28,10 @@
 		{
 			"Name": "UdpMessaging",
 			"Enabled": false
+		},
+		{
+			"Name": "Metasound",
+			"Enabled": true
 		}
 	]
 }
