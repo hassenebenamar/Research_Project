@@ -167,14 +167,16 @@ void AAgentSpawner::Crossover()
 				CrossoverChance = UKismetMathLibrary::RandomFloat();
 				if (CrossoverChance >= 0.5f) {
 					if (ChildOne->Attributes && ChildTwo->Attributes) {
-						ChildOne->Attributes->DNA[j] = FirstAttribute->DNA[j];
-						ChildTwo->Attributes->DNA[j] = SecondAttribute->DNA[j];
+						FString DebugText = TEXT("ChildOne dna crossover");
+						ChildOne->Attributes->DNA.Add(FirstAttribute->DNA[j]);
+						ChildTwo->Attributes->DNA.Add(SecondAttribute->DNA[j]);
 					}
 				}
 				else {
 					if (ChildOne->Attributes && ChildTwo->Attributes) {
-						ChildTwo->Attributes->DNA[j] = FirstAttribute->DNA[j];
-						ChildOne->Attributes->DNA[j] = SecondAttribute->DNA[j];
+						FString DebugText = TEXT("ChildTwo dna crossover");
+						ChildTwo->Attributes->DNA.Add(FirstAttribute->DNA[j]);
+						ChildOne->Attributes->DNA.Add(SecondAttribute->DNA[j]);
 					}
 				}
 			}
@@ -203,7 +205,6 @@ bool AAgentSpawner::CheckNewPopulation()
 void AAgentSpawner::RemoveLastParentIfNeeded()
 {
 	//this function is to trim the new population in case there is an agent that's gonna end up alone in the crossover process
-	//ask Mr.Tanev about this case
 	if (NewPopulation.Num() % 2 > 0) {
 		AAgent* AgentToRemove = NewPopulation[NewPopulation.Num() - 1];
 		if (AgentToRemove) {

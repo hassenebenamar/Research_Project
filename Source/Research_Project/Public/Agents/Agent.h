@@ -39,6 +39,14 @@ public:
 
 	void CopyObject(const AAgent& ObjectToCopy);
 
+	//Senses config
+	UPROPERTY(EditAnywhere, Category = "AI Senses")
+		UAISenseConfig_Sight* SightConfig;
+	UPROPERTY(EditAnywhere, Category = "AI Senses")
+		UAISenseConfig_Hearing* HearingConfig;
+	UPROPERTY(EditAnywhere, Category = "AI Senses")
+		UAIPerceptionComponent* PerceptionComponent;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -91,14 +99,6 @@ protected:
 	void PlayAttackMontage();
 	void PlayDeathMontage();
 
-	//Senses config
-
-	UPROPERTY(EditAnywhere, Category = "AI Senses")
-	UAISenseConfig_Sight* SightConfig;
-	UPROPERTY(EditAnywhere, Category = "AI Senses")
-	UAISenseConfig_Hearing* HearingConfig;
-	UPROPERTY(EditAnywhere, Category = "AI Senses")
-	UAIPerceptionComponent* PerceptionComponent;
 
 private:
 	//AI Behavior

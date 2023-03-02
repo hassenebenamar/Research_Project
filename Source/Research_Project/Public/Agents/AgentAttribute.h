@@ -6,8 +6,11 @@
 #include "Components/ActorComponent.h"
 #include "Environment/EnvStatus.h"
 #include "Agents/SpecieStatus.h"
+#include "Agents/AttributeProperties.h"
+#include "Containers/Map.h"
 #include "AgentAttribute.generated.h"
 
+class AAgent;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class RESEARCH_PROJECT_API UAgentAttribute : public UActorComponent
@@ -18,32 +21,41 @@ public:
 	UAgentAttribute();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 AgentID;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, category = "Agent Stats")
+	int64 AgentID;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, category = "Agent Stats")
 	TArray<uint8> DNA;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	EAgentSpecie AgentSpecie;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
-		float SightRange;
+	float SightRange;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
-		float SightOffset;
+	float SightOffset;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
-		float SightRadius;
-
+	float SightRadius;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
-		float HearingThreshold;
+	float HearingThreshold;
 	//research variables
 
-	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
-		float SurvivabilityScore;
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess), category = "Agent Stats")
+	float SurvivabilityScore;
+	//init stats
 
-	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess))
-		bool bWasChosen;
+	void InitializeStats(AAgent* AgentToInit);
+	void InitializeNewStats(AAgent* AgentToInit);
+	void InitializeBaseStats(AAgent* AgentToInit);
+	
 protected:
 	virtual void BeginPlay() override;
+
+	void CalculateBaseStats(AAgent* Agent);
+	void CalculateStatPerAS(FString& ClassName, AAgent* Agent, EFloatPropertyName PropertyEnum);
+	TArray<float> CalculateSenseBonus(AAgent* Agent, FString& ClassName);
+	void InitializeFloatStats(AAgent* Agent);
+	void InitializeInt64Stats(AAgent* Agent);
+	void InitializeDNA(AAgent* AgentToInit);
 
 private:
 	//stats
@@ -54,22 +66,18 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
 		float AgentHealth;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
-		float AgentWidth;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
-		float AgentHeight;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
 		uint8 AgentSize;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
 		uint8 Energy;
 	
 	//environment variables
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
 	EEnvType IdealEnvironment;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess), category = "Agent Stats")
 	EEnvType EnvironmentType;
 
-
+	TArray<FProperty*> Properties;
 public:
 
 	/*Species status check*/
@@ -87,9 +95,10 @@ public:
 
 	// stats functions
 
+	float CalculateSize(AAgent* AgentToInit);
 	float CalculateDamage(float Size);
 	float CalculateHealth(float Size, float Damage);
-	float CalculateSize(float CapsuleHalfRadius);
+	float CalculateSpeed(float Size);
 
 	float CalculateSurvivability(float Speed, float Damage, float Size, float Health);
 

@@ -25,15 +25,6 @@ AAgent::AAgent() {
 	PrimaryActorTick.bCanEverTick = true;
 
 	Attributes = CreateDefaultSubobject<UAgentAttribute>(TEXT("Attributes"));
-	if (Attributes->DNA.Num() == 0 && Attributes->SurvivabilityScore == 0.f && Attributes->AgentID == 0) {
-		Attributes->SurvivabilityScore = FMath::FRandRange(0.f, 1.f);
-		//Attributes->AgentID = FMath::FRandRange(-2147483647, 2147483647);
-		Attributes->AgentID = FMath::RandRange(0, 100);
-		for (uint8 i = 0; i < 4; i++) {
-			uint8 ChromosomeToAdd = UKismetMathLibrary::RandomInteger(2);
-			Attributes->DNA.Add(ChromosomeToAdd);
-		}
-	}
 }
 
 void AAgent::CopyObject(const AAgent& ObjectToCopy)
@@ -75,10 +66,8 @@ void AAgent::BeginPlay()
 {
 	Super::BeginPlay();
 	World = GetWorld();
-	UCapsuleComponent* Capsule = ACharacter::GetCapsuleComponent();
-	if (Attributes && Capsule) {
-		float AgentSize = Attributes->CalculateSize(Capsule->GetScaledCapsuleRadius());
-		
+	if (Attributes) {
+		Attributes->InitializeNewStats(this);
 	}
 	AgentController = Cast<AAIController>(GetController());
 	OnActorBeginOverlap.AddDynamic(this, &AAgent::OnActorOverlap);
