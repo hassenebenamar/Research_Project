@@ -8,6 +8,7 @@ AAdmin::AAdmin()
 	SetTickableWhenPaused(true);
 }
 
+
 void AAdmin::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);

@@ -21,6 +21,8 @@ public:
 
 	UWorld* World;
 
+	void SpawnDestroyable();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -31,7 +33,7 @@ private:
 	//actor to spawn
 
 	UPROPERTY(EditAnywhere)
-		TArray<TSubclassOf<AEnvironmentActor>> ActorsToSpawn;
+	TArray<TSubclassOf<AEnvironmentActor>> ActorsToSpawn;
 
 	UBoxComponent* Box;
 
@@ -40,22 +42,30 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
 	int32 TotalToSpawn;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Environment Spawning")
 		float MaxSpawnRange;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Environment Spawning")
 		float PerlinSeed;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Environment Spawning")
 		float MinPerlin;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Environment Spawning")
 		float MaxPerlin;
 
 	//spawn functions
 
-	void SpawnActorAtLocation(FVector Location);
+	void SpawnActorAtLocation();
 	float CalculatePerlinX();
 	float CalculatePerlinY();
 
+	//timers
+	void RenewEnvironment();
+	
+	FTimerHandle RenewHandle;
+	UPROPERTY(EditAnywhere, Category = "Environment Spawning")
+	float RenewTime;
+	void StartRenewTimer();
+	void ClearRenewTimer();
 };

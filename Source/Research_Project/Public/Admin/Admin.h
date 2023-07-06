@@ -16,6 +16,7 @@ class RESEARCH_PROJECT_API AAdmin : public ADefaultPawn
 
 public:
 
+	//class is not used for now, could be extended with another game mode
 	AAdmin();
 	void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 };

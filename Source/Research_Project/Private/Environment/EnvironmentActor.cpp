@@ -24,6 +24,7 @@ void AEnvironmentActor::BeginPlay()
 	Super::BeginPlay();
 	World = GetWorld();
 	SetActorLocation(LineTrace());
+	EnvironmentMesh->SetCollisionObjectType(ECC_GameTraceChannel2);
 }
 
 void AEnvironmentActor::Tick(float DeltaTime)

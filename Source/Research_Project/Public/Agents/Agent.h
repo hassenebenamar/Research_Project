@@ -4,18 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Research_Project/DebugMacros.h"
 #include "SpecieStatus.h"
-#include "Perception/AIPerceptionTypes.h"
 #include "Environment/EnvStatus.h"
 #include "Agent.generated.h"
 
 class UAgentAttribute;
 class AEnvironmentActor;
-class UAIPerceptionComponent;
-class UPawnSensingComponent;
-class UAISenseConfig_Sight;
-class AAIController;
-struct FAIStimulus;
+class AAgentBehaviorTree;
 
 UCLASS()
 class RESEARCH_PROJECT_API AAgent : public ACharacter
@@ -23,15 +19,25 @@ class RESEARCH_PROJECT_API AAgent : public ACharacter
 	GENERATED_BODY()
 
 public:
+
+	//default constructor
 	AAgent();
 
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UWorld* World;
+	//atributes
+	UPROPERTY(VisibleAnywhere)
+	UAgentAttribute* Attributes;
 
-protected:
-	virtual void BeginPlay() override;
+	void CopyObject(const AAgent& ObjectToCopy);
+	UPROPERTY(EditAnywhere)
+	float CombatRadius;
+	
+	//traces
+	TArray<AEnvironmentActor*> GetPossibleFood();
+	TArray<AAgent*> GetPossibleEnemies();
 
 	/*Species status check*/
 	bool IsAlive();
@@ -41,80 +47,24 @@ protected:
 	bool IsActive();
 	bool IsSleeping();
 
-	//atributes
-	UPROPERTY(VisibleAnywhere)
-	UAgentAttribute* Attributes;
-
-	UPROPERTY(EditAnywhere)
-	float CombatRadius;
-	//functions 
-	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-
-	bool IsInCombatRange(AAgent* Target);
+	//getters and setters
 	UFUNCTION(BlueprintCallable)
-	void ActorSeen(AActor* SeenActor, FAIStimulus Stimulus);
+	FORCEINLINE TArray <EAgentSpecie > GetPredators() { return Predators; }
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE TArray <EAgentSpecie > GetPrey() { return Preys; }
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE TArray <EEnvActorType> GetFood() { return GreenFood; }
 
-	void ReactToEnemy();
-
-	template<typename T>
-	void MoveToTarget(T* SeenTarget);
-
-private:
-	//AI Behavior
-
-	UPROPERTY(EditAnywhere)
-	AAIController* AgentController;
-
-	//red targets
-	UPROPERTY(EditAnywhere, category = "Red Targets")
-	TArray<EAgentSpecie> Predators;
-	UPROPERTY(EditAnywhere, category = "Red Targets")
-	TArray<EAgentSpecie> Preys;
-	UPROPERTY(VisibleAnywhere, category = "Red Targets")
-	AAgent* Enemy;
-
-	//green targets
-	UPROPERTY(EditAnywhere, category = "Green Targets")
-	TArray<EEnvActorType> GreenFood;
-
-	void GetRunAwayLocation();
-
-	void Sleep();
-	void GetUp();
-	void Hunt();
-	void Attack();
-	void RunAway();
 	void Die();
+	bool CheckOverlap(AActor* OverlapActor);
 
-	//timers
+protected:
+	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere)
-	float AttackTime;
+	//play animations (usable by children)
 
-	FTimerHandle AttackTimer;
-	void StartAttackTimer();
-	void ClearAttackTimer();
-
-	// interaction with environment
-
-	UPROPERTY(VisibleAnywhere, category = "Interaction with Environment")
-	AEnvironmentActor* OverlappedEnvActor;
-
-	UFUNCTION(BlueprintCallable)
-	void OnActorOverlap(AActor* OverlappedActor, AActor* OtherActor);
-
-	//play animations
-
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	class UAnimSequence* SleepAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* GetUpAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* RunAwayAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* HuntingAnim;
-	UPROPERTY(EditAnywhere, Category = "Agent Animations")
-	UAnimSequence* EatingAnim;
+	UPROPERTY(VisibleAnywhere, Category = "Agent Animations")
+	TArray<class UAnimSequence*> AnimArray;
 	UPROPERTY(EditAnywhere, Category = "Agent Animations")
 	class UAnimMontage* AttackMontage;
 	UPROPERTY(EditAnywhere, Category = "Agent Animations")
@@ -125,16 +75,30 @@ private:
 	void PlayRunAwayAnim();
 	void PlayHuntingAnim();
 	void PlayEatingAnim();
-	void PlayAttackMontage();
-	void PlayDeathMontage();
+
+	//red targets
+	UPROPERTY(EditAnywhere, category = "Red Targets")
+	TArray<EAgentSpecie> Predators;
+	UPROPERTY(EditAnywhere, category = "Red Targets")
+	TArray<EAgentSpecie> Preys;
+
+private:
+	//AI Behavior
+	UPROPERTY(EditAnywhere, category = "Red Targets")
+	TArray<AAgent*> Targets;
+	//green targets
+	UPROPERTY(EditAnywhere, category = "Green Targets")
+	TArray<EEnvActorType> GreenFood;
+	UPROPERTY(EditAnywhere, category = "Green Targets")
+	TArray<AEnvironmentActor*> GreenTargets;
+
+	UPROPERTY(EditAnywhere, category = "Behavior")
+	FTimerHandle BehaviorTimer;
+	UFUNCTION(BlueprintCallable)
+	void CallBehaviorTree();
+	UFUNCTION(BlueprintCallable)
+	void StartBehaviorTimer();
+	UFUNCTION(BlueprintCallable)
+	void ClearBehaviorTimer();
 };
 
-template<typename T>
-inline void AAgent::MoveToTarget(T* Target)
-{
-	if (AgentController == nullptr || Target == nullptr) return;
-	FAIMoveRequest MoveRequest;
-	MoveRequest.SetGoalActor(Target);
-	MoveRequest.SetAcceptanceRadius(30.f);
-	AgentController->MoveTo(MoveRequest);
-}

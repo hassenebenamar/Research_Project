@@ -25,6 +25,10 @@ public:
 	bool CheckIfDestroyableActor();
 	void ClearRenewalTimer();
 
+	//environment attributes
+	UPROPERTY(EditAnywhere)
+	UEnvironmentAttribute* ActorAttributes;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
@@ -34,12 +38,6 @@ protected:
 	virtual void DisableCollision();
 	UFUNCTION(BlueprintCallable)
 	virtual void EnablePawnCollision();
-
-	/*Variables for other classes*/
-
-	//environment attributes
-	UPROPERTY(EditAnywhere)
-	UEnvironmentAttribute* ActorAttributes;
 
 private:
 

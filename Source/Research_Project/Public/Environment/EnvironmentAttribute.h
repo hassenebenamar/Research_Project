@@ -17,6 +17,11 @@ public:
 	UEnvironmentAttribute();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	//getters and setters
+	FORCEINLINE EEnvActorType GetType() { return ActorType; }
+	FORCEINLINE EEnvStatus GetStatus() { return ActorStatus; }
+	FORCEINLINE void SetStatus(EEnvStatus Status) { ActorStatus = Status; }
+
 protected:
 	virtual void BeginPlay() override;
 

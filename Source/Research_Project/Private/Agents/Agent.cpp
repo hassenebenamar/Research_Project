@@ -4,16 +4,14 @@
 #include "Agents/Agent.h"
 #include "Agents/AgentAttribute.h"
 #include "Environment/EnvironmentActor.h"
-#include "Research_Project/DebugMacros.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/AudioComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "AIController.h"
-#include "Perception/AIPerceptionComponent.h"
-#include "Perception/AIPerceptionSystem.h"
-#include "Perception/AISenseConfig_Sight.h"
-#include "Perception/PawnSensingComponent.h"
+#include "Controllers/AgentController.h"
+#include "MetasoundSource.h"
+#include "Sound/SoundWave.h"
 #include "NavigationSystem.h"
 
 AAgent::AAgent() {
@@ -23,16 +21,50 @@ AAgent::AAgent() {
 	Attributes = CreateDefaultSubobject<UAgentAttribute>(TEXT("Attributes"));
 }
 
+void AAgent::CopyObject(const AAgent& ObjectToCopy)
+{
+	{	
+		if (this == nullptr) return;
+		if (!ObjectToCopy.IsValidLowLevel()) return;
+
+		// Get the class of the object to copy
+		UClass* ClassToCopy = ObjectToCopy.GetClass();
+
+		if (ClassToCopy == nullptr) return;
+
+		// Loop through all properties of the class and copy their values
+		for (TFieldIterator<FProperty> PropIt(ClassToCopy); PropIt; ++PropIt)
+		{
+			FProperty* Property = *PropIt;
+			
+			if (Property == nullptr) return;
+
+			// Ignore properties that are not editable or not replicated
+			if (!Property->HasAnyPropertyFlags(CPF_Edit | CPF_Net))
+			{
+				continue;
+			}
+
+			// Get the value of the property on the other object
+			const uint8* ValuePtr = Property->ContainerPtrToValuePtr<uint8>(&ObjectToCopy);
+
+			if (ValuePtr == nullptr) return;
+
+			// Set the value of the property on this object
+			Property->CopyCompleteValue(Property->ContainerPtrToValuePtr<uint8>(this), ValuePtr);
+		}
+	}
+}
+
 void AAgent::BeginPlay()
 {
 	Super::BeginPlay();
 	World = GetWorld();
-	UCapsuleComponent* Capsule = ACharacter::GetCapsuleComponent();
-	if (Attributes && Capsule) {
-		float AgentSize = Attributes->CalculateSize(Capsule->GetScaledCapsuleRadius());
+	if (Attributes) {
+		//PRINT_STRING(TEXT("Setting attributes, begin play"))
+		Attributes->SetAgentState(EAnimalState::EAS_Active);
 	}
-	AgentController = Cast<AAIController>(GetController());
-	OnActorBeginOverlap.AddDynamic(this, &AAgent::OnActorOverlap);
+	StartBehaviorTimer();
 }
 
 //status checks
@@ -68,169 +100,159 @@ bool AAgent::IsSleeping()
 	return Attributes && Attributes->bIsSleeping();
 }
 
-float AAgent::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+TArray<AEnvironmentActor*> AAgent::GetPossibleFood()
 {
-	return 0.0f;
-}
-
-bool AAgent::IsInCombatRange(AAgent* Target)
-{
-	return GetActorLocation().X - Enemy->GetActorLocation().X >= CombatRadius;
-}
-
-void AAgent::ActorSeen(AActor* SeenActor, FAIStimulus Stimulus)
-{
-	TSubclassOf<UAISense> Sense = UAIPerceptionSystem::GetSenseClassForStimulus(this, Stimulus);
-	if (Sense) {
-		Enemy = Cast<AAgent>(SeenActor);
-		if (Enemy) {
-			ReactToEnemy();
-			if (IsInCombatRange(Enemy)) Attack();
+	if (!World || !Attributes) return GreenTargets;
+	if (World && Attributes) {
+		FVector StartLocation = GetActorLocation();
+		StartLocation.Z = 0.f;
+		FVector EndLocation = GetActorLocation() + (GetActorForwardVector() * Attributes->SightRange);
+		EndLocation.Z = GetActorLocation().Z + Attributes->SightOffset * 0.5f;
+		float Radius = Attributes->SightRadius;
+		TArray<FHitResult> HitResults;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+		bool bIsHit = World->SweepMultiByChannel(HitResults, StartLocation, EndLocation, FQuat::Identity, ECC_GameTraceChannel2, FCollisionShape::MakeSphere(Radius), QueryParams);
+		if (!bIsHit) return GreenTargets;
+		for (FHitResult& HitResult : HitResults) {
+			AEnvironmentActor* HitActor = Cast<AEnvironmentActor>(HitResult.GetActor());
+			if (HitActor) {
+				GreenTargets.Add(HitActor);
+			}
 		}
+		return GreenTargets;
 	}
+	return GreenTargets;
 }
 
-void AAgent::ReactToEnemy()
+TArray<AAgent*> AAgent::GetPossibleEnemies()
 {
-	if (Attributes && AgentController && Attributes) {
-		Attributes->AnimalState = EAnimalState::EAS_Active;
-		EAgentSpecie AgentSpecie = Enemy->Attributes->AgentSpecie;
-		if (Preys.Contains(AgentSpecie)) {
-			MoveToTarget(Enemy);
+	if (!World || !Attributes) return Targets;
+	if (World && Attributes) {
+		FVector StartLocation = GetActorLocation();
+		StartLocation.Z = 0.f;
+		FVector EndLocation = GetActorLocation() + (GetActorForwardVector() * Attributes->SightRange);
+		EndLocation.Z = GetActorLocation().Z + Attributes->SightOffset * 0.5f;
+		float Radius = Attributes->SightRadius;
+		TArray<FHitResult> HitResults;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+		bool bIsHit = World->SweepMultiByChannel(HitResults, StartLocation, EndLocation, FQuat::Identity, ECC_Pawn, FCollisionShape::MakeSphere(Radius), QueryParams);
+		if (!bIsHit) return Targets;
+		for (FHitResult& HitResult : HitResults) {
+			AAgent* HitAgent = Cast<AAgent>(HitResult.GetActor());
+			if (HitAgent) {
+				Targets.Add(HitAgent);
+			}
 		}
-		if (Predators.Contains(AgentSpecie)) {
-			RunAway();
-		}
+		return Targets;
 	}
-}
-
-void AAgent::Sleep()
-{
-	if (IsSleeping()) return;
-	if (Attributes) {
-		Attributes->AnimalState = EAnimalState::EAS_Sleeping;
-		PlaySleepAnim();
-	}
-	
-}
-
-void AAgent::GetUp()
-{
-	if (IsActive()) return;
-	if (Attributes) {
-		Attributes->AnimalState = EAnimalState::EAS_Active;
-		PlayGetUpAnim();
-	}
-}
-
-void AAgent::Hunt()
-{
-	if (IsHunting()) return;
-	if (Attributes) {
-		Attributes->AnimalState = EAnimalState::EAS_Hunting;
-		PlayHuntingAnim();
-	}
-}
-
-void AAgent::Attack()
-{
-	if (IsAttacking()) return;
-	if (Attributes) {
-		ClearAttackTimer();
-		Attributes->AnimalState = EAnimalState::EAS_Attacking;
-		StartAttackTimer();
-		PlayAttackMontage();
-		Attributes->AnimalState = EAnimalState::EAS_Active;
-	}
-}
-
-void AAgent::RunAway()
-{
-	if (!IsActive()) return;
-	if (Attributes) {
-		GetRunAwayLocation();
-		PlayRunAwayAnim();
-	}
-}
-
-void AAgent::GetRunAwayLocation()
-{
-	if (AgentController) {
-		PRINT_STRING(TEXT("Getting enemy location"))
-		FVector AgentLocation = GetActorLocation();
-		FVector EnemyLocation = Enemy->GetActorLocation();
-		FRotator Rotation = UKismetMathLibrary::FindLookAtRotation(AgentLocation, EnemyLocation);
-		FVector ForwardVector = UKismetMathLibrary::GetForwardVector(Rotation);
-		ForwardVector = ForwardVector * -500.f;
-		FVector NewAgentLocation = AgentLocation + ForwardVector;
-		NewAgentLocation.Z = AgentLocation.Z;
-		//NavigationSystem->GetRandomPointInNavigableRadius(this, NewAgentLocation, 50.f);
-		FAIMoveRequest MoveRequest;
-		MoveRequest.SetGoalLocation(NewAgentLocation);
-		AgentController->MoveTo(MoveRequest);
-	}
+	return Targets;
 }
 
 void AAgent::Die()
 {
 	if (IsDead()) return;
 	if (Attributes) {
+		PRINT_STRING(TEXT("Agent is dead"))
 		Attributes->AnimalState = EAnimalState::EAS_Dead;
-		PlayDeathMontage();
+		Destroy();
 	}
 }
 
-void AAgent::StartAttackTimer()
-{
-	GetWorldTimerManager().SetTimer(AttackTimer, this, &AAgent::Attack, AttackTime);
-}
-
-void AAgent::ClearAttackTimer()
-{
-	GetWorldTimerManager().ClearTimer(AttackTimer);
-}
-
-void AAgent::OnActorOverlap(AActor* OverlappedActor, AActor* OtherActor)
+bool AAgent::CheckOverlap(AActor* OverlapActor)
 {	
-	OverlappedEnvActor = Cast<AEnvironmentActor>(OverlappedActor);
-	if (OverlappedEnvActor) {
-		//PlayEatingAnim();
-		OverlappedEnvActor->StartRenewal();
+	if (!this || !OverlapActor)
+	{
+		return false;
 	}
+
+	FCollisionQueryParams CollisionParams;
+	FCollisionShape CollisionShape;
+	CollisionShape.ShapeType = ECollisionShape::Sphere;
+	CollisionShape.SetSphere(40.f);
+
+	const bool bOverlap = this->GetWorld()->OverlapAnyTestByChannel(
+		GetActorLocation(),
+		FQuat::Identity,
+		ECC_GameTraceChannel2,
+		CollisionShape,
+		CollisionParams);
+
+	if (bOverlap)
+	{
+		return true;
+	}
+
+	return false;
 }
+
 
 void AAgent::PlaySleepAnim()
 {	
-	USkeletalMeshComponent* AgentMesh = GetMesh();
-	if (AgentMesh && SleepAnim) {
-		AgentMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		AgentMesh->SetAnimation(SleepAnim);
-		AgentMesh->Play(true);
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[0]);
+		AgentMeshComponent->Play(true);
 	}
 }
 
 void AAgent::PlayGetUpAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[1]);
+		AgentMeshComponent->Play(false);
+	}
 }
 
 void AAgent::PlayRunAwayAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[2]);
+		AgentMeshComponent->Play(true);
+	}
 }
 
 void AAgent::PlayHuntingAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[3]);
+		AgentMeshComponent->Play(true);
+	}
 }
 
 void AAgent::PlayEatingAnim()
 {
+	USkeletalMeshComponent* AgentMeshComponent = GetMesh();
+	if (AgentMeshComponent && AnimArray.Num() != 0) {
+		AgentMeshComponent->SetAnimation(AnimArray[4]);
+		AgentMeshComponent->Play(true);
+	}
 }
 
-void AAgent::PlayAttackMontage()
+void AAgent::CallBehaviorTree()
 {
+	AAgentController* BehaviorSystem = NewObject<AAgentController>(this);
+	if (BehaviorSystem) {
+		//PRINT_STRING(TEXT("Running Behavior Tree"))
+		BehaviorSystem->AgentBehaviorChoosing(this);
+	}
+	ClearBehaviorTimer();
+	StartBehaviorTimer();
 }
 
-void AAgent::PlayDeathMontage()
+void AAgent::StartBehaviorTimer()
 {
+	//PRINT_STRING(TEXT("Starting behavior timer"))
+	GetWorldTimerManager().SetTimer(BehaviorTimer, this, &AAgent::CallBehaviorTree, 3.f);
+}
+
+void AAgent::ClearBehaviorTimer()
+{
+	GetWorldTimerManager().ClearTimer(BehaviorTimer);
 }
 
 
