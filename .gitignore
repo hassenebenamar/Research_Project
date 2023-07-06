@@ -3,14 +3,11 @@ Binaries/
 Intermediate/
 Saved/
 Content/BlackAlder/
-Content/Blueprints/
-Content/Levels/
-Content/MSPresets/
 Content/Megascans/
 *.uasset
 *.umap
 *.db
-Config/
 Assets/
 /Build/Windows/FileOpenOrder/EditorOpenOrder.log
 /Config/DefaultGame.ini
+ 
