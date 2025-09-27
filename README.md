@@ -6,7 +6,7 @@ The project applies **Genetic Algorithms** and principles of **Artificial Life s
 
 ## Publications
 
-- **Master Thesis**: Available on [HAL]([https://hal.science/tel-04471795](https://hal.science/tel-04471795v1)) (ID: *tel-04471795*).  
+- **Master Thesis**: Available on [HAL](https://hal.science/tel-04471795v1) (ID: *tel-04471795*).  
 - **Conference Paper**: Presented at the WSCG Conference 2024 in Plzeň, Czech Republic.
 
 ## License & Copyright
